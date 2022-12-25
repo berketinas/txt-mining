@@ -64,8 +64,9 @@ def b2models(reviews):
 
 def feature_extraction(reviews):
     reviews['polarity'] = reviews['cleaned_text'].apply(lambda x: str(TextBlob(x).sentiment.polarity))
-    display(reviews)
+    reviews['word_count'] = reviews['cleaned_text'].apply(lambda x: str(len(x.split())))
 
+    display(reviews)
     return reviews
 
 
@@ -98,6 +99,4 @@ for file in os.listdir(NEG_DATA_PATH):
     reviews_clean_df = pd.concat([reviews_clean_df, read(FILE_PATH)], axis=0, ignore_index=True)
 
 reviews_clean_df = feature_extraction(reviews_clean_df)
-
-
 
