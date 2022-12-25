@@ -2,7 +2,9 @@ import os
 import string
 import re
 
+import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 
 from nltk.corpus import stopwords
 from nltk import word_tokenize
@@ -11,8 +13,12 @@ from nltk.corpus import wordnet
 
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.cluster import KMeans
+from scipy.spatial.distance import cdist
 
 from textblob import TextBlob
+
+from wordcloud import WordCloud
 
 from IPython.display import display
 
@@ -30,24 +36,25 @@ stop_words = stop_words + list(string.printable)
 
 intensity_words = set(wordnet.words())
 
-reviews_clean_df = pd.DataFrame(columns=['cleaned_text'])
+reviews_clean_df = pd.DataFrame(columns=['cleaned_text', 'sentiment'])
 tfidf_vectors = pd.DataFrame()
 
 MAX_FEATURES = 10
 
 
-def read(file_path):
+def read(file_path, sentiment):
     with open(file_path, 'r') as read_pos:
-        return preprocess(read_pos.read())
+        return preprocess(read_pos.read(), sentiment)
 
 
-def preprocess(review):
+def preprocess(review, sentiment):
     reviews_text_df = pd.DataFrame({'text': [review]})
-    temp_clean_df = pd.DataFrame(columns=['cleaned_text'])
+    temp_clean_df = pd.DataFrame(columns=['cleaned_text', 'sentiment'])
 
     temp_clean_df['cleaned_text'] = reviews_text_df['text'].apply(lambda x: ' '.join(
         [lemmatizer.lemmatize(word) for word in word_tokenize(re.sub(r'([^\s\w]|_)+', ' ', str(x))) if
          word not in stop_words]))
+    temp_clean_df['sentiment'] = sentiment
 
     return temp_clean_df
 
@@ -72,7 +79,7 @@ def feature_extraction(reviews):
     reviews['intensity'] = reviews['cleaned_text']\
         .apply(lambda x: str(TextBlob(x).subjectivity))
 
-    tfidf_model = TfidfVectorizer()
+    tfidf_model = TfidfVectorizer(max_features=250)
     tfidf = pd.DataFrame(tfidf_model.fit_transform(reviews['cleaned_text']).todense())
     tfidf.columns = sorted(tfidf_model.vocabulary_)
 
@@ -99,12 +106,41 @@ def polarity_test(reviews):
     print('sum_false: ', sum_false)
 
 
+def word_cloud(reviews):
+    wordcloud = WordCloud(width=800, height=800,
+                          background_color='white',
+                          max_words=50,
+                          min_font_size=10).generate(str(reviews['cleaned_text']))
+    plt.imshow(wordcloud, interpolation='bilinear')
+    plt.axis("off")
+    plt.show()
+
+
+def k_means_clustering(tfidf):
+    distortions = []
+    K = range(1, 6)
+    for k in K:
+        kmeans = KMeans(n_clusters=k)
+        kmeans.fit(tfidf)
+        distortions.append(sum(np.min(cdist(tfidf, kmeans.cluster_centers_, 'euclidean'), axis=1)) / tfidf.shape[0])
+
+    plt.plot(K, distortions, 'bx-')
+    plt.xlabel('k')
+    plt.ylabel('distortion')
+    plt.title('elbow method for optimal k')
+    plt.show()
+
+    # kmeans = KMeans(n_clusters=OPTIMAL_K)
+    # kmeans.fit(tfidf)
+
+
 for file in os.listdir(POS_DATA_PATH):
     FILE_PATH = f"{POS_DATA_PATH}\{file}"
-    reviews_clean_df = pd.concat([reviews_clean_df, read(FILE_PATH)], axis=0, ignore_index=True)
+    reviews_clean_df = pd.concat([reviews_clean_df, read(FILE_PATH, 'pos')], axis=0, ignore_index=True)
 
 for file in os.listdir(NEG_DATA_PATH):
     FILE_PATH = f"{NEG_DATA_PATH}\{file}"
-    reviews_clean_df = pd.concat([reviews_clean_df, read(FILE_PATH)], axis=0, ignore_index=True)
+    reviews_clean_df = pd.concat([reviews_clean_df, read(FILE_PATH, 'neg')], axis=0, ignore_index=True)
 
 reviews_clean_df, tfidf_vectors = feature_extraction(reviews_clean_df)
+
