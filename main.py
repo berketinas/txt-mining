@@ -7,6 +7,7 @@ import pandas as pd
 from nltk.corpus import stopwords
 from nltk import word_tokenize
 from nltk.stem import WordNetLemmatizer
+from nltk.corpus import wordnet
 
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.feature_extraction.text import CountVectorizer
@@ -27,7 +28,10 @@ lemmatizer = WordNetLemmatizer()
 stop_words = stopwords.words('english')
 stop_words = stop_words + list(string.printable)
 
+intensity_words = set(wordnet.words())
+
 reviews_clean_df = pd.DataFrame(columns=['cleaned_text'])
+tfidf_vectors = pd.DataFrame()
 
 MAX_FEATURES = 10
 
@@ -65,9 +69,14 @@ def b2models(reviews):
 def feature_extraction(reviews):
     reviews['polarity'] = reviews['cleaned_text'].apply(lambda x: str(TextBlob(x).sentiment.polarity))
     reviews['word_count'] = reviews['cleaned_text'].apply(lambda x: str(len(x.split())))
+    reviews['intensity'] = reviews['cleaned_text']\
+        .apply(lambda x: str(TextBlob(x).subjectivity))
 
-    display(reviews)
-    return reviews
+    tfidf_model = TfidfVectorizer()
+    tfidf = pd.DataFrame(tfidf_model.fit_transform(reviews['cleaned_text']).todense())
+    tfidf.columns = sorted(tfidf_model.vocabulary_)
+
+    return reviews, tfidf
 
 
 def polarity_test(reviews):
@@ -98,5 +107,4 @@ for file in os.listdir(NEG_DATA_PATH):
     FILE_PATH = f"{NEG_DATA_PATH}\{file}"
     reviews_clean_df = pd.concat([reviews_clean_df, read(FILE_PATH)], axis=0, ignore_index=True)
 
-reviews_clean_df = feature_extraction(reviews_clean_df)
-
+reviews_clean_df, tfidf_vectors = feature_extraction(reviews_clean_df)
