@@ -16,6 +16,8 @@ from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.cluster import KMeans
 from scipy.spatial.distance import cdist
 
+from sklearn.linear_model import LinearRegression
+
 from textblob import TextBlob
 
 from wordcloud import WordCloud
@@ -92,10 +94,10 @@ def polarity_test(reviews):
     sum_false = 0
 
     for iterator in range(2000):
-        if float(reviews.iloc[iterator, 1]) > 0.09 and iterator <= 1000:
+        if float(reviews.iloc[iterator, 2]) > 0.09 and iterator <= 1000:
             sum_pos_polarity += 1
 
-        elif float(reviews.iloc[iterator, 1]) < 0.09 and iterator > 1000:
+        elif float(reviews.iloc[iterator, 2]) < 0.09 and iterator > 1000:
             sum_neg_polarity += 1
 
         else:
@@ -103,6 +105,31 @@ def polarity_test(reviews):
 
     print('sum_pos_polarity: ', sum_pos_polarity)
     print('sum_neg_polarity: ', sum_neg_polarity)
+    print('sum_false: ', sum_false)
+
+
+def linreg_test(reviews):
+    sum_pos_linreg = 0
+    sum_neg_linreg = 0
+    sum_false = 0
+
+    # 0.07 646
+    # 0.06 654
+    # 0.09 617
+    # 0.1 613
+
+    for iterator in range(2000):
+        if float(reviews.iloc[iterator, 5]) > 0.09 and iterator <= 1000:
+            sum_pos_linreg += 1
+
+        elif float(reviews.iloc[iterator, 5]) < 0.09 and iterator > 1000:
+            sum_neg_linreg += 1
+
+        else:
+            sum_false += 1
+
+    print('sum_pos_linreg: ', sum_pos_linreg)
+    print('sum_neg_linreg: ', sum_neg_linreg)
     print('sum_false: ', sum_false)
 
 
@@ -132,6 +159,13 @@ def k_means_clustering(tfidf):
 
     # kmeans = KMeans(n_clusters=OPTIMAL_K)
     # kmeans.fit(tfidf)
+
+
+def linear_regression(reviews, tfidf):
+    lin_reg = LinearRegression()
+    lin_reg.fit(tfidf, reviews['polarity'])
+    reviews['predicted_by_linear_regression'] = lin_reg.predict(tfidf)
+    display(reviews)
 
 
 for file in os.listdir(POS_DATA_PATH):
