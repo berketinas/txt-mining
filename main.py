@@ -2,15 +2,18 @@ import os
 import string
 import re
 
+import nltk
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-
+from sklearn.naive_bayes import GaussianNB
 from nltk.corpus import stopwords
 from nltk import word_tokenize
 from nltk.stem import WordNetLemmatizer
 from nltk.corpus import wordnet
 
+
+from sklearn.linear_model import LogisticRegression
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.cluster import KMeans
@@ -168,6 +171,27 @@ def linear_regression(reviews, tfidf):
     display(reviews)
 
 
+def logistic_regression(reviews, tfidf):
+
+    logreg = LogisticRegression()
+    logreg.fit(tfidf, reviews['sentiment'])
+    predicted_labels = logreg.predict(tfidf)
+
+    reviews['predicted_labels'] = predicted_labels
+    return reviews
+
+def naive_bayes(reviews,tfidf):
+
+    nb = GaussianNB()
+    nb.fit(tfidf, reviews['sentiment'])
+    predicted_labels = nb.predict(tfidf)
+    reviews['predicted_labels_nb'] = predicted_labels
+    return reviews
+
+
+
+
+
 for file in os.listdir(POS_DATA_PATH):
     FILE_PATH = f"{POS_DATA_PATH}\{file}"
     reviews_clean_df = pd.concat([reviews_clean_df, read(FILE_PATH, 'pos')], axis=0, ignore_index=True)
@@ -177,4 +201,14 @@ for file in os.listdir(NEG_DATA_PATH):
     reviews_clean_df = pd.concat([reviews_clean_df, read(FILE_PATH, 'neg')], axis=0, ignore_index=True)
 
 reviews_clean_df, tfidf_vectors = feature_extraction(reviews_clean_df)
+
+reviews_clean_df['sentiment'] = reviews_clean_df['sentiment'].apply(lambda x : 0 if x =='neg'
+else 1)
+
+reviews_clean_df = logistic_regression(reviews_clean_df,tfidf_vectors)
+reviews_clean_df = naive_bayes(reviews_clean_df,tfidf_vectors)
+
+# display(pd.crosstab(reviews_clean_df['sentiment'], reviews_clean_df['predicted_labels']))
+# display(pd.crosstab(reviews_clean_df['sentiment'], reviews_clean_df['predicted_labels_nb']))
+
 
