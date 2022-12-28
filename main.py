@@ -189,7 +189,14 @@ def naive_bayes(reviews,tfidf):
     return reviews
 
 
+# Precision = True Positive / (True Positive + False Positive)
+# Recall = True Positive / (True Positive + False Negative)
+def precision_recall(truePos,falsePos,falseNeg):
+    return truePos/(truePos+falsePos), truePos/(truePos+falseNeg)
 
+def f1_score(truePos,falsePos,falseNeg):
+    precision, recall = precision_recall(truePos,falsePos,falseNeg)
+    return  2 * ((precision * recall) / (precision + recall))
 
 
 for file in os.listdir(POS_DATA_PATH):
