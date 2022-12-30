@@ -2,8 +2,6 @@ import os
 import string
 import re
 
-import nltk
-import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn.naive_bayes import GaussianNB
@@ -12,20 +10,26 @@ from nltk import word_tokenize
 from nltk.stem import WordNetLemmatizer
 from nltk.corpus import wordnet
 
-
 from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import train_test_split
+
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.cluster import KMeans
-from scipy.spatial.distance import cdist
 
 from sklearn.linear_model import LinearRegression
+
+from sklearn.tree import DecisionTreeClassifier
+
+from sklearn.metrics import roc_curve, auc, mean_squared_error
 
 from textblob import TextBlob
 
 from wordcloud import WordCloud
 
 from IPython.display import display
+
+from math import sqrt
 
 pd.set_option('display.max_rows', 500)
 pd.set_option('display.max_columns', 500)
@@ -62,6 +66,14 @@ def preprocess(review, sentiment):
     temp_clean_df['sentiment'] = sentiment
 
     return temp_clean_df
+
+
+def split_data(reviews):
+    x = reviews.values[:, 1:5]
+    y = reviews.values[:, 0]
+
+    x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.3, random_state=100)
+    return x, y, x_train, x_test, y_train, y_test
 
 
 def b2models(reviews):
@@ -111,9 +123,9 @@ def polarity_test(reviews):
     print('sum_false: ', sum_false)
 
 
-def linreg_test(reviews):
-    sum_pos_linreg = 0
-    sum_neg_linreg = 0
+def test(reviews):
+    sum_pos = 0
+    sum_neg = 0
     sum_false = 0
 
     # 0.07 646
@@ -123,16 +135,16 @@ def linreg_test(reviews):
 
     for iterator in range(2000):
         if float(reviews.iloc[iterator, 5]) > 0.09 and iterator <= 1000:
-            sum_pos_linreg += 1
+            sum_pos += 1
 
         elif float(reviews.iloc[iterator, 5]) < 0.09 and iterator > 1000:
-            sum_neg_linreg += 1
+            sum_neg += 1
 
         else:
             sum_false += 1
 
-    print('sum_pos_linreg: ', sum_pos_linreg)
-    print('sum_neg_linreg: ', sum_neg_linreg)
+    print('sum_pos: ', sum_pos)
+    print('sum_neg: ', sum_neg)
     print('sum_false: ', sum_false)
 
 
@@ -146,29 +158,33 @@ def word_cloud(reviews):
     plt.show()
 
 
-def k_means_clustering(tfidf):
-    distortions = []
-    K = range(1, 6)
-    for k in K:
-        kmeans = KMeans(n_clusters=k)
-        kmeans.fit(tfidf)
-        distortions.append(sum(np.min(cdist(tfidf, kmeans.cluster_centers_, 'euclidean'), axis=1)) / tfidf.shape[0])
+def k_means_clustering(reviews, tfidf):
+    # distortions = []
+    # K = range(1, 6)
+    # for k in K:
+    #     kmeans = KMeans(n_clusters=k)
+    #     kmeans.fit(tfidf)
+    #     distortions.append(sum(np.min(cdist(tfidf, kmeans.cluster_centers_, 'euclidean'), axis=1)) / tfidf.shape[0])
+    #
+    # plt.plot(K, distortions, 'bx-')
+    # plt.xlabel('k')
+    # plt.ylabel('distortion')
+    # plt.title('elbow method for optimal k')
+    # plt.show()
 
-    plt.plot(K, distortions, 'bx-')
-    plt.xlabel('k')
-    plt.ylabel('distortion')
-    plt.title('elbow method for optimal k')
-    plt.show()
+    kmeans = KMeans(n_clusters=3)
+    kmeans.fit(tfidf)
+    reviews['predicted_by_kmeans'] = kmeans.predict(tfidf)
 
-    # kmeans = KMeans(n_clusters=OPTIMAL_K)
-    # kmeans.fit(tfidf)
+    return reviews
 
 
 def linear_regression(reviews, tfidf):
     lin_reg = LinearRegression()
     lin_reg.fit(tfidf, reviews['polarity'])
     reviews['predicted_by_linear_regression'] = lin_reg.predict(tfidf)
-    display(reviews)
+
+    return reviews
 
 
 def logistic_regression(reviews, tfidf):
@@ -180,8 +196,8 @@ def logistic_regression(reviews, tfidf):
     reviews['predicted_labels'] = predicted_labels
     return reviews
 
-def naive_bayes(reviews,tfidf):
 
+def naive_bayes(reviews, tfidf):
     nb = GaussianNB()
     nb.fit(tfidf, reviews['sentiment'])
     predicted_labels = nb.predict(tfidf)
@@ -191,12 +207,42 @@ def naive_bayes(reviews,tfidf):
 
 # Precision = True Positive / (True Positive + False Positive)
 # Recall = True Positive / (True Positive + False Negative)
-def precision_recall(truePos,falsePos,falseNeg):
-    return truePos/(truePos+falsePos), truePos/(truePos+falseNeg)
+def precision_recall(true_pos, false_pos, false_neg):
+    return true_pos / (true_pos + false_pos), true_pos / (true_pos + false_neg)
 
-def f1_score(truePos,falsePos,falseNeg):
-    precision, recall = precision_recall(truePos,falsePos,falseNeg)
-    return  2 * ((precision * recall) / (precision + recall))
+
+def f1_score(true_pos, false_pos, false_neg):
+    precision, recall = precision_recall(true_pos, false_pos, false_neg)
+    return 2 * ((precision * recall) / (precision + recall))
+
+
+def decision_tree(reviews, tfidf):
+    dtc = DecisionTreeClassifier()
+    dtc = dtc.fit(tfidf, reviews['sentiment'])
+    reviews['predicted_by_dtc'] = dtc.predict(tfidf)
+
+    return reviews
+
+
+def confusion_matrix(actual, predicted):
+    display(pd.crosstab(actual, predicted))
+
+
+def roc(actual, predicted):
+    fpr, tpr, threshold = roc_curve(actual, predicted)
+
+    print('Area under ROC curve for validation set: ', auc(fpr, tpr))
+
+    fig, ax = plt.subplots(figsize=(6, 6))
+    ax.plot(fpr, tpr, label='Validation set AUC')
+    plt.xlabel('false positive rate')
+    plt.ylabel('true positive rate')
+    ax.legend(loc='best')
+    plt.show()
+
+
+def rmse(actual, predicted):
+    print('ROOT MEAN SQUARE ERROR: ', sqrt(mean_squared_error(actual, predicted)))
 
 
 for file in os.listdir(POS_DATA_PATH):
@@ -209,13 +255,17 @@ for file in os.listdir(NEG_DATA_PATH):
 
 reviews_clean_df, tfidf_vectors = feature_extraction(reviews_clean_df)
 
-reviews_clean_df['sentiment'] = reviews_clean_df['sentiment'].apply(lambda x : 0 if x =='neg'
-else 1)
+reviews_clean_df['sentiment'] = reviews_clean_df['sentiment'].apply(lambda x: 0 if x == 'neg' else 1)
 
-reviews_clean_df = logistic_regression(reviews_clean_df,tfidf_vectors)
-reviews_clean_df = naive_bayes(reviews_clean_df,tfidf_vectors)
+# reviews_clean_df = decision_tree(reviews_clean_df, tfidf_vectors)
+#
+reviews_clean_df = logistic_regression(reviews_clean_df, tfidf_vectors)
+#
+# reviews_clean_df = naive_bayes(reviews_clean_df, tfidf_vectors)
+#
+# reviews_clean_df = linear_regression(reviews_clean_df, tfidf_vectors)
+#
+# reviews_clean_df = k_means_clustering(reviews_clean_df, tfidf_vectors)
 
-# display(pd.crosstab(reviews_clean_df['sentiment'], reviews_clean_df['predicted_labels']))
-# display(pd.crosstab(reviews_clean_df['sentiment'], reviews_clean_df['predicted_labels_nb']))
-
-
+test(reviews_clean_df)
+rmse(reviews_clean_df['sentiment'], reviews_clean_df['predicted_labels'])
