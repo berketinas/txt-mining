@@ -1,7 +1,7 @@
 import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
 import networkx as nx
-from main import reviews_clean_df, display
+from main import reviews_clean_df
 from nltk import sent_tokenize, word_tokenize
 import contractions
 
@@ -70,6 +70,13 @@ def fix_contractions(sentences):
     return [contractions.fix(sentence) for sentence in sentences]
 
 
+def write_file(reviews, sentiment):
+    with open('{}_summarized.txt'.format(sentiment), 'w') as f:
+        for review in reviews:
+            f.write(review)
+            f.write('\n')
+
+
 # sentences in article = reviews.cleaned_text.apply(sent_tokenize)
 reviews_clean_df['sentences_in_review'] = reviews_clean_df.cleaned_text.apply(sent_tokenize)
 
@@ -82,3 +89,6 @@ reviews_clean_df['sim_matrix'] = reviews_clean_df.sentence_vector.apply(similari
 reviews_clean_df['graph'] = reviews_clean_df.sim_matrix.apply(compute_graph)
 reviews_clean_df['summary'] = reviews_clean_df \
     .apply(lambda d: get_ranked_sentences(d.sentences_in_review, d.graph), axis=1)
+
+write_file(reviews_clean_df['summary'].head(1000), 'pos')
+write_file(reviews_clean_df['summary'].tail(1000), 'neg')
