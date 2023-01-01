@@ -2,8 +2,10 @@ import os
 import string
 import re
 
+import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+from scipy.spatial.distance import cdist
 from sklearn.naive_bayes import GaussianNB
 from nltk.corpus import stopwords
 from nltk import word_tokenize
@@ -69,11 +71,7 @@ def preprocess(review, sentiment):
 
 
 def split_data(reviews):
-    x = reviews.values[:, 1:5]
-    y = reviews.values[:, 0]
-
-    x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.3, random_state=100)
-    return x, y, x_train, x_test, y_train, y_test
+    return train_test_split(reviews.cleaned_text, reviews.sentiment, test_size=0.3, random_state=42)
 
 
 def b2models(reviews):
@@ -159,24 +157,24 @@ def word_cloud(reviews):
 
 
 def k_means_clustering(reviews, tfidf):
-    # distortions = []
-    # K = range(1, 6)
-    # for k in K:
-    #     kmeans = KMeans(n_clusters=k)
-    #     kmeans.fit(tfidf)
-    #     distortions.append(sum(np.min(cdist(tfidf, kmeans.cluster_centers_, 'euclidean'), axis=1)) / tfidf.shape[0])
+    distortions = []
+    K = range(1, 40)
+    for k in K:
+        kmeans = KMeans(n_clusters=k)
+        kmeans.fit(tfidf)
+        distortions.append(sum(np.min(cdist(tfidf, kmeans.cluster_centers_, 'euclidean'), axis=1)) / tfidf.shape[0])
+
+    plt.plot(K, distortions, 'bx-')
+    plt.xlabel('k')
+    plt.ylabel('distortion')
+    plt.title('elbow method for optimal k')
+    plt.show()
+
+    # kmeans = KMeans(n_clusters=3)
+    # kmeans.fit(tfidf)
+    # reviews['predicted_by_kmeans'] = kmeans.predict(tfidf)
     #
-    # plt.plot(K, distortions, 'bx-')
-    # plt.xlabel('k')
-    # plt.ylabel('distortion')
-    # plt.title('elbow method for optimal k')
-    # plt.show()
-
-    kmeans = KMeans(n_clusters=3)
-    kmeans.fit(tfidf)
-    reviews['predicted_by_kmeans'] = kmeans.predict(tfidf)
-
-    return reviews
+    # return reviews
 
 
 def linear_regression(reviews, tfidf):
@@ -255,11 +253,17 @@ for file in os.listdir(NEG_DATA_PATH):
 
 reviews_clean_df, tfidf_vectors = feature_extraction(reviews_clean_df)
 
-reviews_clean_df['sentiment'] = reviews_clean_df['sentiment'].apply(lambda x: 0 if x == 'neg' else 1)
+x_train, x_test, y_train, y_test = split_data(reviews_clean_df)
+display(x_train.info())
+display(x_test.info())
+display(y_train.info())
+display(y_test.info())
+
+# reviews_clean_df['sentiment'] = reviews_clean_df['sentiment'].apply(lambda x: 0 if x == 'neg' else 1)
 
 # reviews_clean_df = decision_tree(reviews_clean_df, tfidf_vectors)
 #
-reviews_clean_df = logistic_regression(reviews_clean_df, tfidf_vectors)
+# reviews_clean_df = logistic_regression(reviews_clean_df, tfidf_vectors)
 #
 # reviews_clean_df = naive_bayes(reviews_clean_df, tfidf_vectors)
 #
@@ -267,5 +271,5 @@ reviews_clean_df = logistic_regression(reviews_clean_df, tfidf_vectors)
 #
 # reviews_clean_df = k_means_clustering(reviews_clean_df, tfidf_vectors)
 
-test(reviews_clean_df)
-rmse(reviews_clean_df['sentiment'], reviews_clean_df['predicted_labels'])
+# test(reviews_clean_df)
+# rmse(reviews_clean_df['sentiment'], reviews_clean_df['predicted_labels'])

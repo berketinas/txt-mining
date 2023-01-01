@@ -1,7 +1,7 @@
 import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
 import networkx as nx
-from main import reviews_clean_df
+from preprocess import reviews_clean_df
 from nltk import sent_tokenize, word_tokenize
 import contractions
 
