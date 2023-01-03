@@ -10,7 +10,6 @@ from sklearn.naive_bayes import GaussianNB
 from nltk.corpus import stopwords
 from nltk import word_tokenize
 from nltk.stem import WordNetLemmatizer
-from nltk.corpus import wordnet
 
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
@@ -20,6 +19,7 @@ from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.cluster import KMeans
 
 from sklearn.linear_model import LinearRegression
+from sklearn.pipeline import Pipeline
 
 from sklearn.tree import DecisionTreeClassifier
 
@@ -33,6 +33,7 @@ from IPython.display import display
 
 from math import sqrt
 
+
 pd.set_option('display.max_rows', 500)
 pd.set_option('display.max_columns', 500)
 pd.set_option('display.width', 1000)
@@ -44,8 +45,6 @@ lemmatizer = WordNetLemmatizer()
 
 stop_words = stopwords.words('english')
 stop_words = stop_words + list(string.printable)
-
-intensity_words = set(wordnet.words())
 
 reviews_clean_df = pd.DataFrame(columns=['cleaned_text', 'sentiment'])
 tfidf_vectors = pd.DataFrame()
@@ -62,16 +61,17 @@ def preprocess(review, sentiment):
     reviews_text_df = pd.DataFrame({'text': [review]})
     temp_clean_df = pd.DataFrame(columns=['cleaned_text', 'sentiment'])
 
+    temp_clean_df['ex_mark'] = reviews_text_df['text'].apply(lambda x: x.count('!'))
     temp_clean_df['cleaned_text'] = reviews_text_df['text'].apply(lambda x: ' '.join(
         [lemmatizer.lemmatize(word) for word in word_tokenize(re.sub(r'([^\s\w]|_)+', ' ', str(x))) if
          word not in stop_words]))
-    temp_clean_df['sentiment'] = sentiment
+    temp_clean_df['sentiment'] = reviews_text_df['text'].apply(lambda x: sentiment)
 
     return temp_clean_df
 
 
 def split_data(reviews):
-    return train_test_split(reviews.cleaned_text, reviews.sentiment, test_size=0.3, random_state=42)
+    return train_test_split(reviews.cleaned_text, reviews.sentiment, test_size=0.3, random_state=77)
 
 
 def b2models(reviews):
@@ -91,34 +91,14 @@ def b2models(reviews):
 def feature_extraction(reviews):
     reviews['polarity'] = reviews['cleaned_text'].apply(lambda x: str(TextBlob(x).sentiment.polarity))
     reviews['word_count'] = reviews['cleaned_text'].apply(lambda x: str(len(x.split())))
-    reviews['intensity'] = reviews['cleaned_text']\
+    reviews['subjectivity'] = reviews['cleaned_text']\
         .apply(lambda x: str(TextBlob(x).subjectivity))
 
-    tfidf_model = TfidfVectorizer(max_features=250)
+    tfidf_model = TfidfVectorizer()
     tfidf = pd.DataFrame(tfidf_model.fit_transform(reviews['cleaned_text']).todense())
     tfidf.columns = sorted(tfidf_model.vocabulary_)
 
     return reviews, tfidf
-
-
-def polarity_test(reviews):
-    sum_pos_polarity = 0
-    sum_neg_polarity = 0
-    sum_false = 0
-
-    for iterator in range(2000):
-        if float(reviews.iloc[iterator, 2]) > 0.09 and iterator <= 1000:
-            sum_pos_polarity += 1
-
-        elif float(reviews.iloc[iterator, 2]) < 0.09 and iterator > 1000:
-            sum_neg_polarity += 1
-
-        else:
-            sum_false += 1
-
-    print('sum_pos_polarity: ', sum_pos_polarity)
-    print('sum_neg_polarity: ', sum_neg_polarity)
-    print('sum_false: ', sum_false)
 
 
 def test(reviews):
@@ -186,7 +166,6 @@ def linear_regression(reviews, tfidf):
 
 
 def logistic_regression(reviews, tfidf):
-
     logreg = LogisticRegression()
     logreg.fit(tfidf, reviews['sentiment'])
     predicted_labels = logreg.predict(tfidf)
@@ -203,6 +182,29 @@ def naive_bayes(reviews, tfidf):
     return reviews
 
 
+def decision_tree(reviews, tfidf):
+    dtc = DecisionTreeClassifier()
+    dtc = dtc.fit(tfidf, reviews['sentiment'])
+    reviews['predicted_by_dtc'] = dtc.predict(tfidf)
+
+    return reviews
+
+
+def part_e(reviews):
+    x_train, x_test, y_train, y_test = train_test_split(reviews.cleaned_text, reviews.sentiment, test_size=0.3, random_state=42)
+
+    log_reg = LogisticRegression(random_state=0, solver='lbfgs')
+    tfidf = TfidfVectorizer(strip_accents=None, preprocessor=None, lowercase=False)
+    log_tfidf = Pipeline([('vect', tfidf), ('clf', log_reg)])
+
+    y_train = y_train.astype('int')
+    log_tfidf.fit(x_train, y_train.values)
+
+    y_test = y_test.astype('int')
+    accuracy = log_tfidf.score(x_test, y_test.values)
+    print(f'accuracy: {accuracy}')
+
+
 # Precision = True Positive / (True Positive + False Positive)
 # Recall = True Positive / (True Positive + False Negative)
 def precision_recall(true_pos, false_pos, false_neg):
@@ -212,14 +214,6 @@ def precision_recall(true_pos, false_pos, false_neg):
 def f1_score(true_pos, false_pos, false_neg):
     precision, recall = precision_recall(true_pos, false_pos, false_neg)
     return 2 * ((precision * recall) / (precision + recall))
-
-
-def decision_tree(reviews, tfidf):
-    dtc = DecisionTreeClassifier()
-    dtc = dtc.fit(tfidf, reviews['sentiment'])
-    reviews['predicted_by_dtc'] = dtc.predict(tfidf)
-
-    return reviews
 
 
 def confusion_matrix(actual, predicted):
@@ -245,21 +239,15 @@ def rmse(actual, predicted):
 
 for file in os.listdir(POS_DATA_PATH):
     FILE_PATH = f"{POS_DATA_PATH}\{file}"
-    reviews_clean_df = pd.concat([reviews_clean_df, read(FILE_PATH, 'pos')], axis=0, ignore_index=True)
+    reviews_clean_df = pd.concat([reviews_clean_df, read(FILE_PATH, 1)], axis=0, ignore_index=True)
 
 for file in os.listdir(NEG_DATA_PATH):
     FILE_PATH = f"{NEG_DATA_PATH}\{file}"
-    reviews_clean_df = pd.concat([reviews_clean_df, read(FILE_PATH, 'neg')], axis=0, ignore_index=True)
+    reviews_clean_df = pd.concat([reviews_clean_df, read(FILE_PATH, 0)], axis=0, ignore_index=True)
 
 reviews_clean_df, tfidf_vectors = feature_extraction(reviews_clean_df)
 
-x_train, x_test, y_train, y_test = split_data(reviews_clean_df)
-display(x_train.info())
-display(x_test.info())
-display(y_train.info())
-display(y_test.info())
-
-# reviews_clean_df['sentiment'] = reviews_clean_df['sentiment'].apply(lambda x: 0 if x == 'neg' else 1)
+part_e(reviews_clean_df)
 
 # reviews_clean_df = decision_tree(reviews_clean_df, tfidf_vectors)
 #
