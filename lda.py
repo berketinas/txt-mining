@@ -1,7 +1,6 @@
-from preprocess import reviews_clean_df, display, plt
-
+from matplotlib import pyplot as plt
+from preprocess import reviews_clean_df
 import matplotlib.style as style
-
 from gensim import corpora
 from gensim.parsing.preprocessing import preprocess_string
 from gensim.models.ldamodel import LdaModel
