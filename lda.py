@@ -1,5 +1,4 @@
 from matplotlib import pyplot as plt
-from preprocess import reviews_clean_df
 import matplotlib.style as style
 from gensim import corpora
 from gensim.parsing.preprocessing import preprocess_string
@@ -21,27 +20,27 @@ def get_coherence_values(r, d, c, start, stop):
         yield coherence
 
 
-reviews = reviews_clean_df.cleaned_text.apply(preprocess_string).tolist()
-dictionary = corpora.Dictionary(reviews)
-corpus = [dictionary.doc2bow(text) for text in reviews]
+def lda(reviews):
+    reviews = reviews.cleaned_text.apply(preprocess_string).tolist()
+    dictionary = corpora.Dictionary(reviews)
+    corpus = [dictionary.doc2bow(text) for text in reviews]
 
-# ldamodel = LdaModel(corpus,
-#                     num_topics=NUM_TOPICS,
-#                     id2word=dictionary, passes=15)
-# display(ldamodel.print_topics(num_words=6))
+    # ldamodel = LdaModel(corpus,
+    #                     num_topics=NUM_TOPICS,
+    #                     id2word=dictionary, passes=15)
+    # display(ldamodel.print_topics(num_words=6))
 
-min_topics, max_topics = 10, 30
-coherence_scores = list(get_coherence_values(reviews, dictionary, corpus, min_topics, max_topics))
+    min_topics, max_topics = 10, 30
+    coherence_scores = list(get_coherence_values(reviews, dictionary, corpus, min_topics, max_topics))
 
-style.use('fivethirtyeight')
+    style.use('fivethirtyeight')
 
-x = [int(i) for i in range(min_topics, max_topics)]
+    x = [int(i) for i in range(min_topics, max_topics)]
 
-ax = plt.figure(figsize=(10, 8))
-plt.xticks(x)
-plt.plot(x, coherence_scores)
-plt.xlabel('Number of topics')
-plt.ylabel('Coherence values')
-plt.title('Coherence Scores', fontsize=10)
+    plt.xticks(x)
+    plt.plot(x, coherence_scores)
+    plt.xlabel('Number of topics')
+    plt.ylabel('Coherence values')
+    plt.title('Coherence Scores', fontsize=10)
 
-plt.show()
+    plt.show()
