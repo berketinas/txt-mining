@@ -71,7 +71,7 @@ def write_file(df, sentiment):
             f.write('\n')
 
 
-def write(reviews):
+def text_rank(reviews):
     reviews['sentences_in_review'] = reviews.cleaned_text.apply(sent_tokenize)
     reviews['words_in_sentences'] = reviews.sentences_in_review.apply(tokenize_words)
 

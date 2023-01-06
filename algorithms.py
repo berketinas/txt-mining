@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 from scipy.spatial.distance import cdist
 from sklearn.naive_bayes import GaussianNB
 from sklearn.linear_model import LogisticRegression
@@ -9,6 +10,8 @@ import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.pipeline import Pipeline
+
+from perf_measure import confusion_matrix, roc, rmse, f1_score
 
 
 def k_means_clustering(reviews, tfidf):
@@ -26,14 +29,18 @@ def k_means_clustering(reviews, tfidf):
     # plt.title('elbow method for optimal k')
     # plt.show()
 
-    kmeans = KMeans(n_clusters=2)
-    kmeans.fit(tfidf)
+    x_train, x_test, y_train, y_test = train_test_split(tfidf,
+                                                        reviews.sentiment,
+                                                        test_size=0.3,
+                                                        random_state=77)
 
-    # accuracy = kmeans.score(tfidf)
-    # print(f'K-MEANS ACCURACY: {accuracy}')
+    kmeans = KMeans(n_clusters=2, n_init=10)
+    kmeans.fit(x_train)
 
-    reviews['predicted_by_kmeans'] = kmeans.predict(tfidf)
-    return reviews
+    predicted = kmeans.predict(x_test)
+    confusion_matrix(y_test.astype('int'), predicted)
+    roc(y_test.astype('int'), predicted)
+    rmse(y_test.astype('int'), predicted)
 
 
 def linear_regression(reviews, tfidf):
@@ -46,6 +53,25 @@ def linear_regression(reviews, tfidf):
     accuracy = lin_reg.score(x_test, y_test.astype('int').values)
     print(f'LINEAR REGRESSION ACCURACY: {accuracy}')
 
+    predicted = lin_reg.predict(x_test).astype('int')
+
+    true_pos, false_pos, false_neg = 0, 0, 0
+    for i in range(0, 600):
+        if y_test.astype('int').values[i] == 1:
+            if predicted[i] == 1:
+                true_pos += 1
+
+            else:
+                false_neg += 1
+
+        else:
+            if predicted[i] == 1:
+                false_pos += 1
+
+    f1_score(true_pos, false_pos, false_neg)
+    roc(y_test.astype('int'), predicted)
+    rmse(y_test.astype('int'), predicted)
+
 
 def naive_bayes(reviews, tfidf):
     x_train, x_test, y_train, y_test = train_test_split(tfidf,
@@ -57,17 +83,57 @@ def naive_bayes(reviews, tfidf):
     accuracy = nb.score(x_test, y_test.astype('int').values)
     print(f'NAIVE BAYES ACCURACY: {accuracy}')
 
+    predicted = nb.predict(x_test)
+
+    true_pos, false_pos, false_neg = 0, 0, 0
+    for i in range(0, 600):
+        if y_test.astype('int').values[i] == 1:
+            if predicted[i] == 1:
+                true_pos += 1
+
+            else:
+                false_neg += 1
+
+        else:
+            if predicted[i] == 1:
+                false_pos += 1
+
+    f1_score(true_pos, false_pos, false_neg)
+    confusion_matrix(y_test.astype('int'), predicted)
+    roc(y_test.astype('int'), predicted)
+    rmse(y_test.astype('int'), predicted)
+
 
 def decision_tree(reviews, tfidf):
     x_train, x_test, y_train, y_test = train_test_split(tfidf,
                                                         reviews.sentiment,
-                                                        test_size=0.3,
+                                                        test_size=0.5,
                                                         random_state=77)
 
-    dtc = DecisionTreeClassifier()
+    dtc = DecisionTreeClassifier(max_depth=5)
     dtc = dtc.fit(x_train, y_train.astype('int').values)
     accuracy = dtc.score(x_test, y_test.astype('int').values)
     print(f'DECISION TREE ACCURACY: {accuracy}')
+
+    predicted = dtc.predict(x_test)
+
+    true_pos, false_pos, false_neg = 0, 0, 0
+    for i in range(0, 600):
+        if y_test.astype('int').values[i] == 1:
+            if predicted[i] == 1:
+                true_pos += 1
+
+            else:
+                false_neg += 1
+
+        else:
+            if predicted[i] == 1:
+                false_pos += 1
+
+    f1_score(true_pos, false_pos, false_neg)
+    confusion_matrix(y_test.astype('int'), predicted)
+    roc(y_test.astype('int'), predicted)
+    rmse(y_test.astype('int'), predicted)
 
 
 # FOR PART E
@@ -91,3 +157,23 @@ def logistic_regression(reviews):
     y_test = y_test.astype('int')
     accuracy = log_tfidf.score(x_test, y_test.values)
     print(f'LOGISTIC REGRESSION ACCURACY: {accuracy}')
+
+    predicted = log_tfidf.predict(x_test)
+
+    true_pos, false_pos, false_neg = 0, 0, 0
+    for i in range(0, 600):
+        if y_test.astype('int').values[i] == 1:
+            if predicted[i] == 1:
+                true_pos += 1
+
+            else:
+                false_neg += 1
+
+        else:
+            if predicted[i] == 1:
+                false_pos += 1
+
+    f1_score(true_pos, false_pos, false_neg)
+    confusion_matrix(y_test, predicted)
+    roc(y_test, predicted)
+    rmse(y_test, predicted)

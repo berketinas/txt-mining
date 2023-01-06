@@ -13,7 +13,9 @@ def precision_recall(true_pos, false_pos, false_neg):
 
 def f1_score(true_pos, false_pos, false_neg):
     precision, recall = precision_recall(true_pos, false_pos, false_neg)
-    return 2 * ((precision * recall) / (precision + recall))
+    print(f'PRECISION: {precision}')
+    print(f'RECALL: {recall}')
+    print(f'F1 SCORE: {2 * ((precision * recall) / (precision + recall))}')
 
 
 def confusion_matrix(actual, predicted):

@@ -1,11 +1,11 @@
 import os
 import pandas as pd
-from IPython.core.display_functions import display
 
 from preprocess import read
 from extract_ft import feature_extraction, compare_bow_tfidf, word_cloud
 from algorithms import k_means_clustering, linear_regression, naive_bayes, decision_tree, logistic_regression
-from perf_measure import precision_recall, f1_score, confusion_matrix, roc, rmse
+from lda import lda
+from text_rank import text_rank
 
 pd.set_option('display.max_rows', 500)
 pd.set_option('display.max_columns', 500)
@@ -31,13 +31,14 @@ for file in os.listdir(NEG_DATA_PATH):
 reviews, tfidf = feature_extraction(reviews)
 
 # compare bag of words and tfidf top 10 words
-# compare_bow_tfidf(reviews)
+compare_bow_tfidf(reviews)
 
 # word cloud of top 50 words
-# word_cloud(reviews)
+word_cloud(reviews)
 
 # k-means clustering
-# reviews = k_means_clustering(reviews, tfidf)
+k_means_clustering(reviews, tfidf)
+
 # linear regression
 linear_regression(reviews, tfidf)
 
@@ -49,3 +50,9 @@ decision_tree(reviews, tfidf)
 
 # logistic regression
 logistic_regression(reviews)
+
+# latent dirichlet allocation
+lda(reviews)
+
+# text summarization
+text_rank(reviews)
